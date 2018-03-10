@@ -17,7 +17,11 @@
             <property name="can_focus">True</property>
             <property name="margin_bottom">302</property>
             <child>
-              <placeholder/>
+              <object class="GtkLabel" id="summaryDummyLabel">
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <property name="label" translatable="yes">OH NO</property>
+              </object>
             </child>
             <child type="tab">
               <object class="GtkLabel" id="notebookSummaryLabel">
@@ -30,7 +34,14 @@
               </packing>
             </child>
             <child>
-              <placeholder/>
+              <object class="GtkLabel" id="timelineDummyLabel">
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <property name="label" translatable="yes">NOT ME</property>
+              </object>
+              <packing>
+                <property name="position">1</property>
+              </packing>
             </child>
             <child type="tab">
               <object class="GtkLabel" id="notebookTImelineLabel">
@@ -44,7 +55,14 @@
               </packing>
             </child>
             <child>
-              <placeholder/>
+              <object class="GtkLabel" id="exportDummyLabel">
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <property name="label" translatable="yes">I NEVER LOST CONTROL</property>
+              </object>
+              <packing>
+                <property name="position">2</property>
+              </packing>
             </child>
             <child type="tab">
               <object class="GtkLabel" id="notebookExportLabel">
