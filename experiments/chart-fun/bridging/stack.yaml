@@ -1,0 +1,10 @@
+flags: {}
+packages:
+- .
+extra-deps:
+- gi-gdk-3.0.15
+- gi-gdkpixbuf-2.0.15
+- gi-gio-2.0.15
+- gi-gtk-3.0.20
+- gi-pango-1.0.16
+resolver: lts-11.0
