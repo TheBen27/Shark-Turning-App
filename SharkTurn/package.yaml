@@ -24,6 +24,12 @@ dependencies:
 
 library:
   source-dirs: src
+  dependencies:
+  - text
+  - vector
+  - time
+  - cassava
+  - bytestring
 
 executables:
   SharkTurn-exe:
@@ -46,3 +52,6 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - SharkTurn
+    - hspec
+    - cassava
+    - vector
