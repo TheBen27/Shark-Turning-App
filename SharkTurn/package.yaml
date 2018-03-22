@@ -55,3 +55,4 @@ tests:
     - hspec
     - cassava
     - vector
+    - time
