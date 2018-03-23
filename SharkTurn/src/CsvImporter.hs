@@ -19,34 +19,51 @@ newtype Window = Window (V.Vector Sample)
 
 data WindowedAccel = WindowedAccel ConfigInfo (V.Vector Window)
 
-data ConfigInfo = ConfigInfo { startTime  :: UTCTime
+data ConfigInfo = ConfigInfo { startTime  :: LocalTime
                              , sampleRate :: Float }
 
 data ParseError = NoSampleRate
-                | NoStartDate
+                | NoStartTime
                 | NoLoadedData
-                | CouldNotParse
+                | CouldNotParse deriving (Eq, Show)
 
-data CsvLine = ConfigLine B.ByteString (V.Vector B.ByteString)
-             | DataLine   Float Float Float Float deriving (Show)
+data CsvLine = DataLine Float Float Float Float 
+             | SampleRate Float
+             | StartTime  LocalTime
+             | OtherLine deriving (Show)
 
-isData :: CsvLine -> Bool
-isData (DataLine _ _ _ _) = True
-isData (ConfigLine _ _) = False
+isSampleRate :: CsvLine -> Bool
+isSampleRate (SampleRate _) = True
+isSampleRate _ = False
 
-isConfig = not . isData
+isStartTime :: CsvLine -> Bool
+isStartTime (StartTime _) = True
+isStartTime _ = False
 
 instance FromRecord CsvLine where
     parseRecord r
         | (B.head . V.head) r == ';' =
               let k = (B.tail . V.head) r
                   v = V.tail r
-              in  ConfigLine <$> (parseField k) <*> (traverse parseField v)
+              in  case k of
+                      "SampleRate" -> SampleRate <$> r `index` 1
+                      "Start_time" -> do
+                          d <- r `index` 1
+                          t <- r `index` 2
+                          let str = mconcat [d, " ", t]
+                          case parseTimeM True defaultTimeLocale "%T %F" str of
+                              (Nothing) -> fail "Couldn't decode time"
+                              (Just t) -> return $ StartTime t
+                      _ -> return OtherLine
         | otherwise = DataLine <$>
                       r `index` 0 <*>
                       r `index` 1 <*>
                       r `index` 2 <*>
                       r `index` 3
+
+isData :: CsvLine -> Bool
+isData (DataLine _ _ _ _) = True
+isData _ = False
 
 -- |Import a GCDC accelerometer file.
 importGcdc :: BL.ByteString -> Validation [ParseError] RawAccel
@@ -55,27 +72,21 @@ importGcdc b =
         (Failure f) -> Failure f
         (Success v) -> RawAccel <$> importGcdcConfig v <*> importGcdcData v
 
-{-
- - parseCsv b -> Validation . .
- -
- - Take this value and push it into importGcdcData and importGcdcConfig
- -}
-
 importGcdcData :: V.Vector (CsvLine) -> Validation [ParseError] (V.Vector Sample)
 importGcdcData = validate [NoLoadedData] V.null . load
   where
     load = fmap toSample . V.filter isData
     toSample (DataLine t x y z) = Sample x y z
 
-
 importGcdcConfig :: V.Vector (CsvLine) -> Validation [ParseError] ConfigInfo
-importGcdcConfig = do
-    st <- startTime
-    sr <- sampleRate
-    return $ ConfigInfo <$> st <*> sr
+importGcdcConfig ls = ConfigInfo <$> startTime ls <*> sampleRate ls
   where
-    startTime = undefined
-    sampleRate = undefined
+    startTime v = case V.find isStartTime v of
+                      (Just (StartTime t)) -> Success t
+                      Nothing -> Failure [NoStartTime]
+    sampleRate v = case V.find isSampleRate v of
+                      (Just (SampleRate s)) -> Success s
+                      Nothing -> Failure [NoSampleRate]
 
 parseCsv :: BL.ByteString -> Validation [ParseError] (V.Vector (CsvLine))
 parseCsv = liftError (const [CouldNotParse]) . decode NoHeader

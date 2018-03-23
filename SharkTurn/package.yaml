@@ -57,3 +57,5 @@ tests:
     - cassava
     - vector
     - time
+    - bytestring
+    - validation
