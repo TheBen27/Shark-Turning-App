@@ -30,6 +30,7 @@ library:
   - time
   - cassava
   - bytestring
+  - validation >= 1
 
 executables:
   SharkTurn-exe:

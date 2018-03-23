@@ -1,68 +1,81 @@
 {-# LANGUAGE OverloadedStrings #-}
-module CsvImporter
-    ( Sample (..)
-    , Window (..)
-    , ConfigInfo (..)
-    , WindowedAccel (..)
-    , RawAccel (..)
-    , importGcdc
-    ) where
+module CsvImporter where
 
 import qualified Data.Text as T
-import qualified Data.ByteString.Char8 as BS
+import qualified Data.ByteString.Char8 as B
+import qualified Data.ByteString.Lazy.Char8 as BL
 import qualified Data.Vector as V
-import Data.Maybe (fromJust)
 import Data.Time
 import Data.Time.Format
+import Data.Validation
 
 import Data.Csv
 
 data Sample = Sample !Float !Float !Float deriving (Show, Eq)
 
+data RawAccel = RawAccel ConfigInfo (V.Vector Sample)
+
 newtype Window = Window (V.Vector Sample)
+
+data WindowedAccel = WindowedAccel ConfigInfo (V.Vector Window)
 
 data ConfigInfo = ConfigInfo { startTime  :: UTCTime
                              , sampleRate :: Float }
 
-data WindowedAccel = WindowedAccel ConfigInfo (V.Vector Window)
+data ParseError = NoSampleRate
+                | NoStartDate
+                | NoLoadedData
+                | CouldNotParse
 
-data RawAccel = RawAccel ConfigInfo (V.Vector Sample)
+data CsvLine = ConfigLine B.ByteString (V.Vector B.ByteString)
+             | DataLine   Float Float Float Float deriving (Show)
+
+isData :: CsvLine -> Bool
+isData (DataLine _ _ _ _) = True
+isData (ConfigLine _ _) = False
+
+isConfig = not . isData
+
+instance FromRecord CsvLine where
+    parseRecord r
+        | (B.head . V.head) r == ';' =
+              let k = (B.tail . V.head) r
+                  v = V.tail r
+              in  ConfigLine <$> (parseField k) <*> (traverse parseField v)
+        | otherwise = DataLine <$>
+                      r `index` 0 <*>
+                      r `index` 1 <*>
+                      r `index` 2 <*>
+                      r `index` 3
 
 -- |Import a GCDC accelerometer file.
-importGcdc :: Csv -> RawAccel
-importGcdc = RawAccel <$> importGcdcConfig
-                      <*> importGcdcData
+importGcdc :: BL.ByteString -> Validation [ParseError] RawAccel
+importGcdc b =
+    case parseCsv b of
+        (Failure f) -> Failure f
+        (Success v) -> RawAccel <$> importGcdcConfig v <*> importGcdcData v
 
+{-
+ - parseCsv b -> Validation . .
+ -
+ - Take this value and push it into importGcdcData and importGcdcConfig
+ -}
 
-importGcdcData :: Csv -> V.Vector Sample
-importGcdcData = V.mapMaybe byRecord
+importGcdcData :: V.Vector (CsvLine) -> Validation [ParseError] (V.Vector Sample)
+importGcdcData = validate [NoLoadedData] V.null . load
   where
-    byRecord :: Record -> Maybe Sample
-    byRecord v = if v V.! 0 /= ""
-                 then Sample <$> rfloat (v V.! 1)
-                             <*> rfloat (v V.! 2)
-                             <*> rfloat (v V.! 3)
-                 else Nothing
-    
-    rfloat :: BS.ByteString -> Maybe Float
-    rfloat s = case (reads . BS.unpack) s of
-                   [] -> Nothing
-                   ((f,_):_) -> Just f 
+    load = fmap toSample . V.filter isData
+    toSample (DataLine t x y z) = Sample x y z
 
 
-importGcdcConfig :: Csv -> ConfigInfo
-importGcdcConfig csv = ConfigInfo (fromJust startTime) sampleRate
+importGcdcConfig :: V.Vector (CsvLine) -> Validation [ParseError] ConfigInfo
+importGcdcConfig = do
+    st <- startTime
+    sr <- sampleRate
+    return $ ConfigInfo <$> st <*> sr
   where
-    startTime :: Maybe UTCTime
-    startTime = let v = getKey "Start_time"
-                    s = mconcat [v V.! 0, " ", v V.! 1]
-                in  parseTimeM True defaultTimeLocale
-                               "%F %T" (BS.unpack s)
+    startTime = undefined
+    sampleRate = undefined
 
-    sampleRate = (read . BS.unpack . V.head . getKey) "SampleRate"
-
-    -- Separate config section into key-values pairs
-    getKey k = snd . fromJust . V.find ((== k) . fst) $ keys
-    keys :: V.Vector (BS.ByteString, V.Vector BS.ByteString)
-    keys = fmap (\r -> (V.head r, V.tail r))
-         . V.filter (BS.null . V.head) $ csv
+parseCsv :: BL.ByteString -> Validation [ParseError] (V.Vector (CsvLine))
+parseCsv = liftError (const [CouldNotParse]) . decode NoHeader
