@@ -79,6 +79,13 @@ main = hspec $ do
                   sr `shouldBe` configSampleRate
                   st `shouldBe` configStartTime
       it "Some header info and a line of real data" $ do
-         pending
+          let g = importGcdc lineAndConfig
+          case g of
+              (Failure f) -> expectationFailure . show $ f
+              (Success (RawAccel (ConfigInfo st sr) v)) -> do
+                sr `shouldBe` configSampleRate
+                st `shouldBe` configStartTime
+                V.length v `shouldBe` 1
+                V.head v `shouldBe` Sample 1 2 3
       it "Incorrectly-formatted data" $ do
          pending
