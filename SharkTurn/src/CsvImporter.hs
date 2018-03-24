@@ -9,6 +9,8 @@ import Data.Time
 import Data.Time.Format
 import Data.Validation
 
+import Debug.Trace
+
 import Data.Csv
 
 data Sample = Sample !Float !Float !Float deriving (Show, Eq)
@@ -42,7 +44,7 @@ isStartTime _ = False
 
 instance FromRecord CsvLine where
     parseRecord r
-        | (B.head . V.head) r == ';' =
+        | ';' `B.elem` V.head r =
               let k = (B.tail . V.head) r
                   v = V.tail r
               in  case k of
@@ -51,8 +53,8 @@ instance FromRecord CsvLine where
                           d <- r `index` 1
                           t <- r `index` 2
                           let str = mconcat [d, " ", t]
-                          case parseTimeM True defaultTimeLocale "%T %F" str of
-                              (Nothing) -> fail "Couldn't decode time"
+                          case parseTimeM True defaultTimeLocale "%F %_T%Q" str of
+                              (Nothing) -> fail $ "Couldn't decode " ++ str
                               (Just t) -> return $ StartTime t
                       _ -> return OtherLine
         | otherwise = DataLine <$>

@@ -70,10 +70,14 @@ main = hspec $ do
                  v V.! 2 `shouldBe` Sample 7 8 9
                  v V.! 3 `shouldBe` Sample 10 11 12
                  v V.! 4 `shouldBe` Sample 13 14 15
-      it "Configuration Sample rate" $ do
-         pending
-      it "Configuration Date" $ do
-         pending
+      it "Configuration s-rate and start time" $ do
+          let p = parseCsv config
+              o = bindValidation p importGcdcConfig
+          case o of
+              (Failure f) -> expectationFailure . show $ f
+              (Success (ConfigInfo st sr)) -> do
+                  sr `shouldBe` configSampleRate
+                  st `shouldBe` configStartTime
       it "Some header info and a line of real data" $ do
          pending
       it "Incorrectly-formatted data" $ do
