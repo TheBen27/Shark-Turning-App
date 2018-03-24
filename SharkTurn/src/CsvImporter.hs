@@ -13,19 +13,19 @@ import Data.Csv
 
 data Sample = Sample !Float !Float !Float deriving (Show, Eq)
 
-data RawAccel = RawAccel ConfigInfo (V.Vector Sample)
+data RawAccel = RawAccel ConfigInfo (V.Vector Sample) deriving (Show)
 
-newtype Window = Window (V.Vector Sample)
+newtype Window = Window (V.Vector Sample) deriving (Show)
 
-data WindowedAccel = WindowedAccel ConfigInfo (V.Vector Window)
+data WindowedAccel = WindowedAccel ConfigInfo (V.Vector Window) deriving (Show)
 
 data ConfigInfo = ConfigInfo { startTime  :: LocalTime
-                             , sampleRate :: Float }
+                             , sampleRate :: Float } deriving (Show)
 
 data ParseError = NoSampleRate
                 | NoStartTime
                 | NoLoadedData
-                | CouldNotParse deriving (Eq, Show)
+                | CouldNotParse String deriving (Eq, Show)
 
 data CsvLine = DataLine Float Float Float Float 
              | SampleRate Float
@@ -73,7 +73,7 @@ importGcdc b =
         (Success v) -> RawAccel <$> importGcdcConfig v <*> importGcdcData v
 
 importGcdcData :: V.Vector (CsvLine) -> Validation [ParseError] (V.Vector Sample)
-importGcdcData = validate [NoLoadedData] V.null . load
+importGcdcData = validate [NoLoadedData] (not . V.null) . load
   where
     load = fmap toSample . V.filter isData
     toSample (DataLine t x y z) = Sample x y z
@@ -89,4 +89,4 @@ importGcdcConfig ls = ConfigInfo <$> startTime ls <*> sampleRate ls
                       Nothing -> Failure [NoSampleRate]
 
 parseCsv :: BL.ByteString -> Validation [ParseError] (V.Vector (CsvLine))
-parseCsv = liftError (const [CouldNotParse]) . decode NoHeader
+parseCsv = liftError (\s -> [CouldNotParse s]) . decode NoHeader

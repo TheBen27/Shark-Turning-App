@@ -51,15 +51,25 @@ main :: IO ()
 main = hspec $ do
     describe "CSV Data Import" $ do
       it "One line of data" $ do
-         let parsed = importGcdc oneLine
-         case parsed of
-             (Failure f) -> expectationFailure (show f)
-             (Success (RawAccel _ v)) -> do
+         let p = parseCsv oneLine
+             o = bindValidation p importGcdcData
+         case o of
+             (Failure f) -> expectationFailure . show $ f
+             (Success v) -> do
                  V.length v `shouldBe` 1
-                 let s = v V.! 0
-                 s `shouldBe` Sample 0.0 1.0 2.0
+                 v V.! 0 `shouldBe` Sample 1 2 3
       it "Five lines of data correctly" $ do
-         pending
+         let p = parseCsv fiveLines
+             o = bindValidation p importGcdcData
+         case o of
+             (Failure f) -> expectationFailure . show $ f
+             (Success v) -> do
+                 V.length v `shouldBe` 5
+                 v V.! 0 `shouldBe` Sample 1 2 3
+                 v V.! 1 `shouldBe` Sample 4 5 6
+                 v V.! 2 `shouldBe` Sample 7 8 9
+                 v V.! 3 `shouldBe` Sample 10 11 12
+                 v V.! 4 `shouldBe` Sample 13 14 15
       it "Configuration Sample rate" $ do
          pending
       it "Configuration Date" $ do
