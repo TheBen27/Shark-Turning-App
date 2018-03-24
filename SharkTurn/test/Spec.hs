@@ -1,7 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main where
 
-import CsvImporter
+import Internal.CsvImporter
+import Models
 import Test.Hspec
 import Data.Csv
 import Data.Time
