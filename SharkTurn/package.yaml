@@ -1,10 +1,10 @@
 name:                SharkTurn
 version:             0.1.0.0
-github:              "githubuser/SharkTurn"
+github:              "TheBen27/SharkTurn"
 license:             BSD3
-author:              "Author name here"
-maintainer:          "example@example.com"
-copyright:           "2018 Author name here"
+author:              "Benjamin Powell"
+maintainer:          "benjamindavidpowell@gmail.com"
+copyright:           "2018 Benjamin Powell"
 
 extra-source-files:
 - README.md
@@ -31,6 +31,7 @@ library:
   - cassava
   - bytestring
   - validation >= 1
+  - repa
 
 executables:
   SharkTurn-exe:
@@ -42,6 +43,10 @@ executables:
     - -with-rtsopts=-N
     dependencies:
     - SharkTurn
+    - cassava
+    - bytestring
+    - validation
+    - vector
 
 tests:
   SharkTurn-test:
