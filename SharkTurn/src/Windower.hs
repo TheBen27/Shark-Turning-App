@@ -8,7 +8,7 @@ import qualified Data.Vector as V
 {-
  - We're effectively porting the MATLAB code here
  -
- - total_window_size = window_size * 2 + window_overlap;
+ - total_window_size = window_size + window_overlap * 2;
  - sind = (win - 1) * (window_overlap + window_size) + 1;
  - eind = sind + total_window_size - 1;
  - num_windows = floor((length(accel_r) - window_overlap) / (window_overlap + window_size))
@@ -24,23 +24,31 @@ import qualified Data.Vector as V
  -
  - I think, generally, that
  - f(wi, wo) = wi * (size + overlap) + wo
+ -
+ - Consider overlap=0, size=5
+ - [1..20]
+ - [1, 2, 3, 4, 5]
+ - [6, 7, 8, 9, 10]
+ - [11, 12, 13, 14, 15]
+ - [16, 17, 18, 19, 20]
  -}
 
 windowify :: Int -> Int -> RawAccel -> WindowedAccel
 windowify size overlap (RawAccel c d) = WindowedAccel c ax ay az
   where
-    rx = R.fromListUnboxed rsh (V.toList . fmap (\(Sample x _ _) -> x) $ d)
-    ry = R.fromListUnboxed rsh (V.toList . fmap (\(Sample _ y _) -> y) $ d)
-    rz = R.fromListUnboxed rsh (V.toList . fmap (\(Sample _ _ z) -> z) $ d)
+    rx = rawAxis $ \(Sample x y z) -> x
+    ry = rawAxis $ \(Sample x y z) -> y
+    rz = rawAxis $ \(Sample x y z) -> z
     rsh = R.Z R.:. V.length d
     [ax, ay, az] = (WindowedAxis . R.computeS . windowAxis) <$> [rx, ry, rz]
+    rawAxis f = R.fromListUnboxed rsh (V.toList . fmap f $ d)
     windowAxis r =
         R.traverse r
             (const $ R.Z R.:. numWindows R.:. totalWindowSize)
-            (\f sh -> let [wi,wo] = listOfShape sh
+            (\f sh -> let [wo,wi] = listOfShape sh
                           i = wi * (size + overlap) + wo
                           si = R.Z R.:. i
-                      in  f si)
+                      in  f si )
 
-    totalWindowSize = size * 2 + overlap
-    numWindows = V.length d - overlap `div` overlap + size
+    totalWindowSize = size + overlap * 2
+    numWindows = (V.length d - overlap) `div` (overlap + size)

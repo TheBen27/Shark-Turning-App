@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
-module CsvImporterSpec where
+module CsvImporterSpec (spec) where
 
 import Internal.CsvImporter
 import Models
@@ -35,7 +35,7 @@ lineAndConfig :: BL.ByteString
 lineAndConfig = mconcat [config, "\n", oneLine]
 
 fiveLines :: BL.ByteString
-fiveLines = mconcat $
+fiveLines = mconcat
     [ "0.00, 1.0, 2.0, 3.0\n"
     , "0.04, 4.0, 5.0, 6.0\n"
     , "0.08, 7.0, 8.0, 9.0\n"
@@ -49,44 +49,43 @@ configSampleRate :: Float
 configSampleRate = 25
 
 spec :: Spec
-spec = do
-    describe "CSV Data Import" $ do
-      it "One line of data" $ do
-         let p = parseCsv oneLine
-             o = bindValidation p importGcdcData
-         case o of
-             (Failure f) -> expectationFailure . show $ f
-             (Success v) -> do
-                 V.length v `shouldBe` 1
-                 v V.! 0 `shouldBe` Sample 1 2 3
-      it "Five lines of data correctly" $ do
-         let p = parseCsv fiveLines
-             o = bindValidation p importGcdcData
-         case o of
-             (Failure f) -> expectationFailure . show $ f
-             (Success v) -> do
-                 V.length v `shouldBe` 5
-                 v V.! 0 `shouldBe` Sample 1 2 3
-                 v V.! 1 `shouldBe` Sample 4 5 6
-                 v V.! 2 `shouldBe` Sample 7 8 9
-                 v V.! 3 `shouldBe` Sample 10 11 12
-                 v V.! 4 `shouldBe` Sample 13 14 15
-      it "Configuration s-rate and start time" $ do
-          let p = parseCsv config
-              o = bindValidation p importGcdcConfig
-          case o of
-              (Failure f) -> expectationFailure . show $ f
-              (Success (ConfigInfo st sr)) -> do
-                  sr `shouldBe` configSampleRate
-                  st `shouldBe` configStartTime
-      it "Some header info and a line of real data" $ do
-          let g = importGcdc lineAndConfig
-          case g of
-              (Failure f) -> expectationFailure . show $ f
-              (Success (RawAccel (ConfigInfo st sr) v)) -> do
-                sr `shouldBe` configSampleRate
-                st `shouldBe` configStartTime
-                V.length v `shouldBe` 1
-                V.head v `shouldBe` Sample 1 2 3
-      it "Incorrectly-formatted data" $ do
-         pending
+spec = describe "CSV Data Import" $ do
+          it "One line of data" $ do
+             let p = parseCsv oneLine
+                 o = bindValidation p importGcdcData
+             case o of
+                 (Failure f) -> expectationFailure . show $ f
+                 (Success v) -> do
+                     V.length v `shouldBe` 1
+                     v V.! 0 `shouldBe` Sample 1 2 3
+          it "Five lines of data correctly" $ do
+             let p = parseCsv fiveLines
+                 o = bindValidation p importGcdcData
+             case o of
+                 (Failure f) -> expectationFailure . show $ f
+                 (Success v) -> do
+                     V.length v `shouldBe` 5
+                     v V.! 0 `shouldBe` Sample 1 2 3
+                     v V.! 1 `shouldBe` Sample 4 5 6
+                     v V.! 2 `shouldBe` Sample 7 8 9
+                     v V.! 3 `shouldBe` Sample 10 11 12
+                     v V.! 4 `shouldBe` Sample 13 14 15
+          it "Configuration s-rate and start time" $ do
+              let p = parseCsv config
+                  o = bindValidation p importGcdcConfig
+              case o of
+                  (Failure f) -> expectationFailure . show $ f
+                  (Success (ConfigInfo st sr)) -> do
+                      sr `shouldBe` configSampleRate
+                      st `shouldBe` configStartTime
+          it "Some header info and a line of real data" $ do
+              let g = importGcdc lineAndConfig
+              case g of
+                  (Failure f) -> expectationFailure . show $ f
+                  (Success (RawAccel (ConfigInfo st sr) v)) -> do
+                    sr `shouldBe` configSampleRate
+                    st `shouldBe` configStartTime
+                    V.length v `shouldBe` 1
+                    V.head v `shouldBe` Sample 1 2 3
+          it "Incorrectly-formatted data" $ do
+             pending
